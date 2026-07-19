@@ -25,6 +25,73 @@ function LoginPage() {
     displayName: ''
   });
 
+  const hasAttemptedAutoLogin = React.useRef(false);
+
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('demo') === 'true' && !hasAttemptedAutoLogin.current) {
+      hasAttemptedAutoLogin.current = true;
+      navigate('/login', { replace: true });
+
+      const autoLogin = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const uniqueId = `${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+          const email = `guest_${uniqueId}@logtracker.com`;
+          const password = `guestpass_${uniqueId}`;
+          const displayName = `Guest ${Math.floor(1000 + Math.random() * 9000)}`;
+
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(userCredential.user, { displayName });
+          
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            email,
+            displayName,
+            createdAt: new Date(),
+            setupCompleted: false
+          }, { merge: true });
+
+          navigate('/onboarding');
+        } catch (err) {
+          console.error("Auto-login error:", err);
+          setError(err.message || 'Auto-login failed. Please register manually.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      autoLogin();
+    }
+  }, [navigate]);
+
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const uniqueId = `${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+      const email = `guest_${uniqueId}@logtracker.com`;
+      const password = `guestpass_${uniqueId}`;
+      const displayName = `Guest ${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName });
+      
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email,
+        displayName,
+        createdAt: new Date(),
+        setupCompleted: false
+      }, { merge: true });
+
+      navigate('/onboarding');
+    } catch (err) {
+      console.error("Guest login error:", err);
+      setError(err.message || 'Guest login failed. Please register manually.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -174,6 +241,28 @@ function LoginPage() {
               </>
             )}
           </button>
+
+          {!isRegister && (
+            <>
+              <div className="relative my-4 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-100" />
+                </div>
+                <span className="relative bg-white px-3 text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                  Or
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                disabled={loading}
+                className="w-full h-14 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                Explore as Guest (Demo)
+              </button>
+            </>
+          )}
         </form>
 
         <div className="mt-8 flex flex-col items-center gap-4">
